@@ -108,6 +108,7 @@ icon_shape <- function(v){
 add_marker <- function(map_obj, k_data){
   
   if(nrow(k_data) == 0){
+    message("add_maker fail")
     return(map_obj %>% clearGroup("kouji_m"))
   }
   
@@ -133,3 +134,7 @@ add_marker <- function(map_obj, k_data){
   return(ans_obj)
 }
 
+
+keta_str <- function(v, s = "㎡", nsmall = 0){
+  paste0(format(as.numeric(v), big.mark = ",",nsmall = nsmall, scientific = F), s)
+}

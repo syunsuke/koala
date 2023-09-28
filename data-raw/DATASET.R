@@ -1,24 +1,45 @@
 ##################################################################
-# 2022/05/26 ok.xmonad@gmail.com
-# kotoを用いて、メインとシリアルデータを作成
+# 地価公示全国全年データ 作成スクリプト
+# 2023/09/28 ok.xmonad@gmail.com
+# 国土交通省が公開している国土数値情報データの中になる
+# 地価公示データを収集して
+# kotoのツールで読み込み同一地点IDを付したもの
+# data.frame(tibble)として作成
 ##################################################################
 
 # パスはパッケージのトップディレクトリからの相対パス
-# 要kotoライブラリ
-# https://github.com/syunsuke/koto
-
-# 地価公示データ入手先
-# 国土数値情報ダウンロードサービス
-# https://nlftp.mlit.go.jp/ksj/ 
 
 library(tidyverse)
+library(hash)
 library(koto)
 
-# 令和４年のデータ
-target_csvfile <- "data-raw/L01-2022P-2K.csv"
+start_time <- proc.time()
 
-k_data <- read_kouji_csv(target_csvfile) %>% 
-  
+
+# 全国の地価公示URLリスト
+url_list <- url_list_all_kouji()
+#url_list <- url_list_kouji(27)
+
+# データのダウンロード
+download_by_urls(url_list, "data-raw/dl_data")
+
+
+# zipファイルパスのリストを作成
+zipfiles <- dir("data-raw/dl_data", full.names = TRUE)
+
+
+# csvファイルの抜き出し
+pickup_from_zip(zipfiles, "\\.csv", "data-raw/csvfiles")
+
+
+# csvファイルの読み込み
+csvfiles <- dir("data-raw/csvfiles", full.names = TRUE)
+chikakouji_expdata <- read_kouji_csv(csvfiles)
+
+
+chikakouji_all_data <-
+  chikakouji_expdata %>%
+  add_pointid_col() %>%
   select(date,
          wareki,
          std_number,
@@ -48,8 +69,9 @@ k_data <- read_kouji_csv(target_csvfile) %>%
          long,
          lat,
          `用途`,`連番`,
-         bind_id) %>%
-  
+         bind_id,
+         point_id) %>%
+
   rename(`価格時点` = date,
          `和暦` = wareki,
          `標準地番号` = std_number,
@@ -59,7 +81,8 @@ k_data <- read_kouji_csv(target_csvfile) %>%
          `用途地域` = youto,
          `防火区分` = bouka)
 
-s_data <- make_serial_price_data(target_csvfile)
 
-usethis::use_data(k_data, overwrite = TRUE)
-usethis::use_data(s_data, overwrite = TRUE)
+print(proc.time() - start_time)
+
+save(chikakouji_all_data, file = "data/chikakouji_all_data.RData")
+#usethis::use_data(chikakouji_all_data, overwrite = TRUE)
